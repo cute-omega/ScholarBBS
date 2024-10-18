@@ -6,136 +6,134 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的BBS论坛</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
 </head>
 
 <body>
-    <div class="container">
+    <div id="app" class="container">
         <img src="logo.png" alt="BBS徽标" class="logo">
         <h1>我的BBS论坛</h1>
-        <div id="posts"></div>
+        <div id="posts">
+            <div v-for="post in posts" :key="post.id" class="post">
+                <h3>{{ post.title }}</h3>
+                <p>{{ post.content }}</p>
+                <p><em>作者: {{ post.author }}</em></p>
+                <div :id="'replies-' + post.id">
+                    <div v-for="reply in post.replies" :key="reply.id" class="reply">
+                        <p>{{ reply.content }}</p>
+                        <p><em>作者: {{ reply.author }}</em></p>
+                    </div>
+                </div>
+                <div :id="'reply-pagination-' + post.id">
+                    <button @click="prevReplyPage(post.id)">上一页</button>
+                    <button @click="nextReplyPage(post.id)">下一页</button>
+                </div>
+                <input type="text" v-model="newReplyContent[post.id]" placeholder="回复内容">
+                <input type="text" v-model="newReplyAuthor[post.id]" placeholder="回复作者">
+                <button @click="createReply(post.id)">回复</button>
+            </div>
+        </div>
         <div id="pagination">
-            <button id="prevPage" onclick="prevPage()">上一页</button>
-            <button id="nextPage" onclick="nextPage()">下一页</button>
+            <button @click="prevPage">上一页</button>
+            <button @click="nextPage">下一页</button>
         </div>
         <h2>创建新帖子</h2>
-        <input type="text" id="postTitle" placeholder="标题"><br>
-        <textarea id="postContent" placeholder="内容"></textarea><br>
-        <input type="text" id="postAuthor" placeholder="作者"><br>
-        <button onclick="createPost()">提交</button>
+        <input type="text" v-model="newPostTitle" placeholder="标题"><br>
+        <textarea v-model="newPostContent" placeholder="内容"></textarea><br>
+        <input type="text" v-model="newPostAuthor" placeholder="作者"><br>
+        <button @click="createPost">提交</button>
     </div>
 
     <script>
-        let currentPage = 0;
-        const pageLimit = replyLimit = 30;
-        const timeout = 500;
-
-        async function fetchPosts() {
-            const response = await fetch(`/posts?offset=${currentPage * limit}`);
-            const posts = await response.json();
-            const postsContainer = document.getElementById('posts');
-            postsContainer.innerHTML = '';
-            posts.forEach(post => {
-                const postElement = document.createElement('div');
-                postElement.className = 'post';
-                postElement.innerHTML = `
-                    <h3>${post.title}</h3>
-                    <p>${post.content}</p>
-                    <p><em>作者: ${post.author}</em></p>
-                    <div id="replies-${post.id}"></div>
-                    <div id="reply-pagination-${post.id}">
-                        <button onclick="prevReplyPage(${post.id})">上一页</button>
-                        <button onclick="nextReplyPage(${post.id})">下一页</button>
-                    </div>
-                    <input type="text" id="replyContent-${post.id}" placeholder="回复内容">
-                    <input type="text" id="replyAuthor-${post.id}" placeholder="回复作者">
-                    <button onclick="createReply(${post.id})">回复</button>
-                `;
-                postsContainer.appendChild(postElement);
-                fetchReplies(post.id, 0); // 初始加载第一页的回复
-            });
-        }
-
-        async function createPost() {
-            const title = document.getElementById('postTitle').value;
-            const content = document.getElementById('postContent').value;
-            const author = document.getElementById('postAuthor').value;
-            const response = await fetch('/posts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, content, author })
-            });
-            const newPost = await response.json();
-            // 跳转到新建的帖子
-            currentPage = 0;
-            fetchPosts();
-            setTimeout(() => {
-                document.getElementById(`replies-${newPost.id}`).scrollIntoView();
-            }, timeout);
-        }
-
-        async function createReply(postId) {
-            const content = document.getElementById(`replyContent-${postId}`).value;
-            const author = document.getElementById(`replyAuthor-${postId}`).value;
-            await fetch(`/posts/${postId}/replies`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content, author })
-            });
-            // 跳转到最后一页回复
-            fetchReplies(postId, replyPages[postId] + 1);
-        }
-
-        let replyPages = {};
-
-        async function fetchReplies(postId, page) {
-            const offset = page * replyLimit;
-            const response = await fetch(`/posts/${postId}/replies?offset=${offset}`);
-            const replies = await response.json();
-            const repliesContainer = document.getElementById(`replies-${postId}`);
-            repliesContainer.innerHTML = '';
-            replies.forEach(reply => {
-                const replyElement = document.createElement('div');
-                replyElement.className = 'reply';
-                replyElement.innerHTML = `
-                    <p>${reply.content}</p>
-                    <p><em>作者: ${reply.author}</em></p>
-                `;
-                repliesContainer.appendChild(replyElement);
-            });
-            replyPages[postId] = page;
-            // 滚动到最后一页回复
-            if (page > 0) {
-                setTimeout(() => {
-                    repliesContainer.scrollIntoView(false);
-                }, timeout);
+        new Vue({
+            el: '#app',
+            data: {
+                currentPage: 0,
+                posts: [],
+                newPostTitle: '',
+                newPostContent: '',
+                newPostAuthor: '',
+                newReplyContent: {},
+                newReplyAuthor: {},
+                replyPages: {}
+            },
+            created() {
+                this.fetchPosts();
+            },
+            methods: {
+                async fetchPosts() {
+                    const response = await fetch(`/posts?offset=${this.currentPage * 30}`);
+                    const posts = await response.json();
+                    this.posts = posts;
+                    for (const post of this.posts) {
+                        this.fetchReplies(post.id, 0);
+                    }
+                },
+                async createPost() {
+                    const response = await fetch('/posts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            title: this.newPostTitle,
+                            content: this.newPostContent,
+                            author: this.newPostAuthor
+                        })
+                    });
+                    const newPost = await response.json();
+                    this.currentPage = 0;
+                    this.fetchPosts();
+                    this.$nextTick(() => {
+                        document.getElementById(`replies-${newPost.id}`).scrollIntoView();
+                    });
+                },
+                async createReply(postId) {
+                    await fetch(`/posts/${postId}/replies`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            content: this.newReplyContent[postId],
+                            author: this.newReplyAuthor[postId]
+                        })
+                    });
+                    this.fetchReplies(postId, this.replyPages[postId] + 1);
+                },
+                async fetchReplies(postId, page) {
+                    const offset = page * 30;
+                    const response = await fetch(`/posts/${postId}/replies?offset=${offset}`);
+                    const replies = await response.json();
+                    const post = this.posts.find(post => post.id === postId);
+                    if (post) {
+                        post.replies = replies;
+                    }
+                    this.replyPages[postId] = page;
+                    if (page > 0) {
+                        this.$nextTick(() => {
+                            document.getElementById(`replies-${postId}`).scrollIntoView(false);
+                        });
+                    }
+                },
+                nextReplyPage(postId) {
+                    this.replyPages[postId] = (this.replyPages[postId] || 0) + 1;
+                    this.fetchReplies(postId, this.replyPages[postId]);
+                },
+                prevReplyPage(postId) {
+                    if (this.replyPages[postId] > 0) {
+                        this.replyPages[postId]--;
+                    }
+                    this.fetchReplies(postId, this.replyPages[postId]);
+                },
+                nextPage() {
+                    this.currentPage++;
+                    this.fetchPosts();
+                },
+                prevPage() {
+                    if (this.currentPage > 0) {
+                        this.currentPage--;
+                    }
+                    this.fetchPosts();
+                }
             }
-        }
-
-        function nextReplyPage(postId) {
-            replyPages[postId] = (replyPages[postId] || 0) + 1;
-            fetchReplies(postId, replyPages[postId]);
-        }
-
-        function prevReplyPage(postId) {
-            if (replyPages[postId] > 0) {
-                replyPages[postId]--;
-            }
-            fetchReplies(postId, replyPages[postId]);
-        }
-
-        function nextPage() {
-            currentPage++;
-            fetchPosts();
-        }
-
-        function prevPage() {
-            if (currentPage > 0) {
-                currentPage--;
-            }
-            fetchPosts();
-        }
-
-        fetchPosts();
+        });
     </script>
 </body>
 
