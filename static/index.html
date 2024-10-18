@@ -11,8 +11,10 @@
 
 <body>
     <div id="app" class="container">
-        <img src="logo.png" alt="BBS徽标" class="logo">
-        <h1>我的BBS论坛</h1>
+        <div class="header">
+            <img src="logo.png" alt="BBS徽标" class="logo">
+            <h1>我的BBS论坛</h1>
+        </div>
         <div id="posts">
             <div v-for="post in posts" :key="post.id" class="post">
                 <h3>{{ post.title }}</h3>
@@ -136,5 +138,7 @@
         });
     </script>
 </body>
+
+</html>
 
 </html>
