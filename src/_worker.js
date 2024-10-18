@@ -54,5 +54,8 @@ export default {
                 headers: { 'Content-Type': 'application/json' }
             });
         }
+        else {
+            return env.ASSETS.fetch(request);
+        }
     }
 }
