@@ -18,10 +18,12 @@ export default {
         } else if (request.method === 'POST' && pathname === '/posts') {
             // 创建新帖子
             const { title, content, author } = await request.json();
-            const result = await db.prepare('INSERT INTO posts (title, content, author, date, score) VALUES (?, ?, ?, ?, 0)')
-                .bind(title, content, author, new Date().toISOString())
+            const maxIdResult = await db.prepare('SELECT MAX(id) as maxId FROM posts').first();
+            const newId = (maxIdResult.maxId || 0) + 1;
+            const result = await db.prepare('INSERT INTO posts (id, title, content, author, date, score) VALUES (?, ?, ?, ?, ?, 0)')
+                .bind(newId, title, content, author, new Date().toISOString())
                 .run();
-            const newPost = await db.prepare('SELECT * FROM posts WHERE id = ?').bind(result.lastInsertRowid).first();
+            const newPost = await db.prepare('SELECT * FROM posts WHERE id = ?').bind(newId).first();
             return new Response(JSON.stringify(newPost), {
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -30,10 +32,12 @@ export default {
             // 回复帖子
             const postId = pathname.split('/')[2];
             const { content, author } = await request.json();
-            const result = await db.prepare('INSERT INTO replies (post_id, content, author, date, score) VALUES (?, ?, ?, ?, 0)')
-                .bind(postId, content, author, new Date().toISOString())
+            const maxIdResult = await db.prepare('SELECT MAX(id) as maxId FROM replies').first();
+            const newId = (maxIdResult.maxId || 0) + 1;
+            const result = await db.prepare('INSERT INTO replies (id, post_id, content, author, date, score) VALUES (?, ?, ?, ?, ?, 0)')
+                .bind(newId, postId, content, author, new Date().toISOString())
                 .run();
-            const newReply = await db.prepare('SELECT * FROM replies WHERE id = ?').bind(result.lastInsertRowid).first();
+            const newReply = await db.prepare('SELECT * FROM replies WHERE id = ?').bind(newId).first();
             return new Response(JSON.stringify(newReply), {
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -41,11 +45,10 @@ export default {
         } else if (request.method === 'GET' && pathname.startsWith('/posts/') && pathname.endsWith('/replies')) {
             // 获取帖子的回复
             const postId = pathname.split('/')[2];
-            const replyLimit = 30; // 每页显示的回复数量，默认30
             const replyOffset = parseInt(searchParams.get('offset')) || 0; // 回复的偏移量，默认0
 
-            const replies = await db.prepare('SELECT * FROM replies WHERE post_id = ? LIMIT ? OFFSET ?')
-                .bind(postId, replyLimit, replyOffset)
+            const replies = await db.prepare('SELECT * FROM replies WHERE post_id = ? LIMIT 30 OFFSET ?')
+                .bind(postId, replyOffset)
                 .all();
             return new Response(JSON.stringify(replies), {
                 headers: { 'Content-Type': 'application/json' }
