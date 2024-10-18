@@ -3,10 +3,10 @@ export default {
         const url = new URL(request.url);
         const { pathname, searchParams } = url;
         const db = env.DB;
-
+        const pageLimit = replyLimit = 30;
         if (request.method === 'GET' && pathname === '/posts') {
             // 获取分页参数
-            const pageLimit = 30; // 每页显示的帖子数量，默认30
+            // 每页显示的帖子数量，默认30
             const pageOffset = parseInt(searchParams.get('offset')) || 0; // 偏移量，默认0
 
             // 获取所有帖子
@@ -47,8 +47,8 @@ export default {
             const postId = pathname.split('/')[2];
             const replyOffset = parseInt(searchParams.get('offset')) || 0; // 回复的偏移量，默认0
 
-            const replies = await db.prepare('SELECT * FROM replies WHERE post_id = ? LIMIT 30 OFFSET ?')
-                .bind(postId, replyOffset)
+            const replies = await db.prepare('SELECT * FROM replies WHERE post_id = ? LIMIT ? OFFSET ?')
+                .bind(postId, replyLimit, replyOffset)
                 .all();
             return new Response(JSON.stringify(replies), {
                 headers: { 'Content-Type': 'application/json' }

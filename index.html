@@ -26,7 +26,8 @@
 
     <script>
         let currentPage = 0;
-        const limit = 10;
+        const pageLimit = replyLimit = 30;
+        const timeout = 500;
 
         async function fetchPosts() {
             const response = await fetch(`/posts?offset=${currentPage * limit}`);
@@ -69,7 +70,7 @@
             fetchPosts();
             setTimeout(() => {
                 document.getElementById(`replies-${newPost.id}`).scrollIntoView();
-            }, 500);
+            }, timeout);
         }
 
         async function createReply(postId) {
@@ -87,7 +88,7 @@
         let replyPages = {};
 
         async function fetchReplies(postId, page) {
-            const offset = page * 30;
+            const offset = page * replyLimit;
             const response = await fetch(`/posts/${postId}/replies?offset=${offset}`);
             const replies = await response.json();
             const repliesContainer = document.getElementById(`replies-${postId}`);
@@ -106,7 +107,7 @@
             if (page > 0) {
                 setTimeout(() => {
                     repliesContainer.scrollIntoView(false);
-                }, 500);
+                }, timeout);
             }
         }
 
