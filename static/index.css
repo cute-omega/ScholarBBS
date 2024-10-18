@@ -92,6 +92,12 @@ button {
     color: #fff;
     border: none;
     cursor: pointer;
+    text-align: center;
+}
+
+button.commit {
+    display: block;
+    margin: 0 auto;
 }
 
 button:hover {
