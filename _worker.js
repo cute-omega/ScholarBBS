@@ -1,12 +1,16 @@
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
-        const { pathname } = url;
+        const { pathname, searchParams } = url;
         const db = env.DB;
 
         if (request.method === 'GET' && pathname === '/posts') {
+            // 获取分页参数
+            const pageLimit = 30; // 每页显示的帖子数量，默认30
+            const pageOffset = parseInt(searchParams.get('offset')) || 0; // 偏移量，默认0
+
             // 获取所有帖子
-            const posts = await db.prepare('SELECT * FROM posts').all();
+            const posts = await db.prepare('SELECT * FROM posts LIMIT ? OFFSET ?').bind(pageLimit, pageOffset).all();
             return new Response(JSON.stringify(posts), {
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -35,51 +39,17 @@ export default {
             });
 
         } else if (request.method === 'GET' && pathname.startsWith('/posts/') && pathname.endsWith('/replies')) {
-            // 获取帖子的所有回复
+            // 获取帖子的回复
             const postId = pathname.split('/')[2];
-            const replies = await db.prepare('SELECT * FROM replies WHERE post_id = ?').bind(postId).all();
+            const replyLimit = 30; // 每页显示的回复数量，默认30
+            const replyOffset = parseInt(searchParams.get('offset')) || 0; // 回复的偏移量，默认0
+
+            const replies = await db.prepare('SELECT * FROM replies WHERE post_id = ? LIMIT ? OFFSET ?')
+                .bind(postId, replyLimit, replyOffset)
+                .all();
             return new Response(JSON.stringify(replies), {
                 headers: { 'Content-Type': 'application/json' }
             });
-
-        } else if (request.method === 'POST' && pathname.startsWith('/posts/') && pathname.endsWith('/like')) {
-            // 给帖子点赞
-            const postId = pathname.split('/')[2];
-            await db.prepare('UPDATE posts SET score = score + 1 WHERE id = ?').bind(postId).run();
-            const updatedPost = await db.prepare('SELECT * FROM posts WHERE id = ?').bind(postId).first();
-            return new Response(JSON.stringify(updatedPost), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-        } else if (request.method === 'POST' && pathname.startsWith('/posts/') && pathname.endsWith('/dislike')) {
-            // 给帖子点踩
-            const postId = pathname.split('/')[2];
-            await db.prepare('UPDATE posts SET score = score - 1 WHERE id = ?').bind(postId).run();
-            const updatedPost = await db.prepare('SELECT * FROM posts WHERE id = ?').bind(postId).first();
-            return new Response(JSON.stringify(updatedPost), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-        } else if (request.method === 'POST' && pathname.startsWith('/replies/') && pathname.endsWith('/like')) {
-            // 给回复点赞
-            const replyId = pathname.split('/')[2];
-            await db.prepare('UPDATE replies SET score = score + 1 WHERE id = ?').bind(replyId).run();
-            const updatedReply = await db.prepare('SELECT * FROM replies WHERE id = ?').bind(replyId).first();
-            return new Response(JSON.stringify(updatedReply), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-        } else if (request.method === 'POST' && pathname.startsWith('/replies/') && pathname.endsWith('/dislike')) {
-            // 给回复点踩
-            const replyId = pathname.split('/')[2];
-            await db.prepare('UPDATE replies SET score = score - 1 WHERE id = ?').bind(replyId).run();
-            const updatedReply = await db.prepare('SELECT * FROM replies WHERE id = ?').bind(replyId).first();
-            return new Response(JSON.stringify(updatedReply), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-        } else {
-            return new Response('Not Found', { status: 404 });
         }
     }
-};
+}
