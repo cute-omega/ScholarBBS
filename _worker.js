@@ -2,7 +2,7 @@ export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
         const { pathname } = url;
-        const db = new Database(env.DB_CONNECTION_STRING);
+        const db = env.DB;
 
         if (request.method === 'GET' && pathname === '/posts') {
             // 获取所有帖子
