@@ -5,68 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的BBS论坛</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f0f0f0;
-        }
-
-        .container {
-            text-align: center;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 80%;
-            max-width: 800px;
-        }
-
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            border: none;
-            border-radius: 5px;
-            background-color: #007BFF;
-            color: white;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #0056b3;
-        }
-
-        .post,
-        .reply {
-            border-bottom: 1px solid #ddd;
-            padding: 10px 0;
-        }
-
-        .post:last-child,
-        .reply:last-child {
-            border-bottom: none;
-        }
-
-        .score {
-            font-weight: bold;
-            margin-right: 10px;
-        }
-
-        .actions {
-            margin-top: 10px;
-        }
-
-        .logo {
-            width: 100px;
-            height: auto;
-            margin-bottom: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
@@ -74,6 +13,10 @@
         <img src="logo.png" alt="BBS徽标" class="logo">
         <h1>我的BBS论坛</h1>
         <div id="posts"></div>
+        <div id="pagination">
+            <button id="prevPage" onclick="prevPage()">上一页</button>
+            <button id="nextPage" onclick="nextPage()">下一页</button>
+        </div>
         <h2>创建新帖子</h2>
         <input type="text" id="postTitle" placeholder="标题"><br>
         <textarea id="postContent" placeholder="内容"></textarea><br>
@@ -82,8 +25,12 @@
     </div>
 
     <script>
+        let currentPage = 0;
+        const pageLimit = replyLimit = 30;
+        const timeout = 500;
+
         async function fetchPosts() {
-            const response = await fetch('/posts');
+            const response = await fetch(`/posts?offset=${currentPage * limit}`);
             const posts = await response.json();
             const postsContainer = document.getElementById('posts');
             postsContainer.innerHTML = '';
@@ -93,19 +40,18 @@
                 postElement.innerHTML = `
                     <h3>${post.title}</h3>
                     <p>${post.content}</p>
-                    <p>作者: ${post.author}</p>
-                    <p class="score">分数: ${post.score}</p>
-                    <div class="actions">
-                        <button onclick="likePost(${post.id})">点赞</button>
-                        <button onclick="dislikePost(${post.id})">点踩</button>
-                        <button onclick="showReplies(${post.id})">显示回复</button>
-                        <div id="replies-${post.id}" class="replies"></div>
-                        <textarea id="replyContent-${post.id}" placeholder="回复内容"></textarea><br>
-                        <input type="text" id="replyAuthor-${post.id}" placeholder="作者"><br>
-                        <button onclick="createReply(${post.id})">回复</button>
+                    <p><em>作者: ${post.author}</em></p>
+                    <div id="replies-${post.id}"></div>
+                    <div id="reply-pagination-${post.id}">
+                        <button onclick="prevReplyPage(${post.id})">上一页</button>
+                        <button onclick="nextReplyPage(${post.id})">下一页</button>
                     </div>
+                    <input type="text" id="replyContent-${post.id}" placeholder="回复内容">
+                    <input type="text" id="replyAuthor-${post.id}" placeholder="回复作者">
+                    <button onclick="createReply(${post.id})">回复</button>
                 `;
                 postsContainer.appendChild(postElement);
+                fetchReplies(post.id, 0); // 初始加载第一页的回复
             });
         }
 
@@ -113,43 +59,18 @@
             const title = document.getElementById('postTitle').value;
             const content = document.getElementById('postContent').value;
             const author = document.getElementById('postAuthor').value;
-            await fetch('/posts', {
+            const response = await fetch('/posts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ title, content, author })
             });
+            const newPost = await response.json();
+            // 跳转到新建的帖子
+            currentPage = 0;
             fetchPosts();
-        }
-
-        async function likePost(postId) {
-            await fetch(`/posts/${postId}/like`, { method: 'POST' });
-            fetchPosts();
-        }
-
-        async function dislikePost(postId) {
-            await fetch(`/posts/${postId}/dislike`, { method: 'POST' });
-            fetchPosts();
-        }
-
-        async function showReplies(postId) {
-            const response = await fetch(`/posts/${postId}/replies`);
-            const replies = await response.json();
-            const repliesContainer = document.getElementById(`replies-${postId}`);
-            repliesContainer.innerHTML = '';
-            replies.forEach(reply => {
-                const replyElement = document.createElement('div');
-                replyElement.className = 'reply';
-                replyElement.innerHTML = `
-                    <p>${reply.content}</p>
-                    <p>作者: ${reply.author}</p>
-                    <p class="score">分数: ${reply.score}</p>
-                    <div class="actions">
-                        <button onclick="likeReply(${reply.id})">点赞</button>
-                        <button onclick="dislikeReply(${reply.id})">点踩</button>
-                    </div>
-                `;
-                repliesContainer.appendChild(replyElement);
-            });
+            setTimeout(() => {
+                document.getElementById(`replies-${newPost.id}`).scrollIntoView();
+            }, timeout);
         }
 
         async function createReply(postId) {
@@ -160,16 +81,57 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content, author })
             });
-            showReplies(postId);
+            // 跳转到最后一页回复
+            fetchReplies(postId, replyPages[postId] + 1);
         }
 
-        async function likeReply(replyId) {
-            await fetch(`/replies/${replyId}/like`, { method: 'POST' });
+        let replyPages = {};
+
+        async function fetchReplies(postId, page) {
+            const offset = page * replyLimit;
+            const response = await fetch(`/posts/${postId}/replies?offset=${offset}`);
+            const replies = await response.json();
+            const repliesContainer = document.getElementById(`replies-${postId}`);
+            repliesContainer.innerHTML = '';
+            replies.forEach(reply => {
+                const replyElement = document.createElement('div');
+                replyElement.className = 'reply';
+                replyElement.innerHTML = `
+                    <p>${reply.content}</p>
+                    <p><em>作者: ${reply.author}</em></p>
+                `;
+                repliesContainer.appendChild(replyElement);
+            });
+            replyPages[postId] = page;
+            // 滚动到最后一页回复
+            if (page > 0) {
+                setTimeout(() => {
+                    repliesContainer.scrollIntoView(false);
+                }, timeout);
+            }
+        }
+
+        function nextReplyPage(postId) {
+            replyPages[postId] = (replyPages[postId] || 0) + 1;
+            fetchReplies(postId, replyPages[postId]);
+        }
+
+        function prevReplyPage(postId) {
+            if (replyPages[postId] > 0) {
+                replyPages[postId]--;
+            }
+            fetchReplies(postId, replyPages[postId]);
+        }
+
+        function nextPage() {
+            currentPage++;
             fetchPosts();
         }
 
-        async function dislikeReply(replyId) {
-            await fetch(`/replies/${replyId}/dislike`, { method: 'POST' });
+        function prevPage() {
+            if (currentPage > 0) {
+                currentPage--;
+            }
             fetchPosts();
         }
 
