@@ -11,8 +11,10 @@
 
 <body>
     <div id="app" class="container">
-        <img src="logo.png" alt="BBS徽标" class="logo">
-        <h1>我的BBS论坛</h1>
+        <header class="header">
+            <img src="logo.png" alt="BBS徽标" class="logo">
+            <h1>我的BBS论坛</h1>
+        </header>
         <div id="posts">
             <div v-for="post in posts" :key="post.id" class="post">
                 <h3>{{ post.title }}</h3>
@@ -28,8 +30,11 @@
                     <button @click="prevReplyPage(post.id)">上一页</button>
                     <button @click="nextReplyPage(post.id)">下一页</button>
                 </div>
-                <input type="text" v-model="newReplyContent[post.id]" placeholder="回复内容">
-                <input type="text" v-model="newReplyAuthor[post.id]" placeholder="回复作者">
+                <label :for="'replyContent-' + post.id">回复内容</label>
+                <input type="text" :id="'replyContent-' + post.id" v-model="newReplyContent[post.id]"
+                    placeholder="回复内容">
+                <label :for="'replyAuthor-' + post.id">回复作者</label>
+                <input type="text" :id="'replyAuthor-' + post.id" v-model="newReplyAuthor[post.id]" placeholder="回复作者">
                 <button @click="createReply(post.id)">回复</button>
             </div>
         </div>
@@ -38,10 +43,13 @@
             <button @click="nextPage">下一页</button>
         </div>
         <h2>创建新帖子</h2>
-        <input type="text" v-model="newPostTitle" placeholder="标题"><br>
-        <textarea v-model="newPostContent" placeholder="内容"></textarea><br>
-        <input type="text" v-model="newPostAuthor" placeholder="作者"><br>
-        <button @click="createPost">提交</button>
+        <label for="postTitle">标题</label>
+        <input type="text" id="postTitle" v-model="newPostTitle" placeholder="标题"><br>
+        <label for="postContent">内容</label>
+        <textarea id="postContent" v-model="newPostContent" placeholder="内容"></textarea><br>
+        <label for="postAuthor">作者</label>
+        <input type="text" id="postAuthor" v-model="newPostAuthor" placeholder="作者"><br>
+        <button class="commit" @click="createPost">提交</button>
     </div>
 
     <script>
