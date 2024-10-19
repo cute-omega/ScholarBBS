@@ -35,7 +35,7 @@
                     placeholder="回复内容">
                 <label :for="'replyAuthor-' + post.id">回复作者</label>
                 <input type="text" :id="'replyAuthor-' + post.id" v-model="newReplyAuthor[post.id]" placeholder="回复作者">
-                <button @click="createReply(post.id)">回复</button>
+                <button class="commit" @click="createReply(post.id)">回复</button>
             </div>
         </div>
         <div id="pagination">
@@ -70,7 +70,11 @@
             },
             methods: {
                 async fetchPosts() {
-                    const response = await fetch(`/posts?offset=${this.currentPage * 30}`);
+                    const response = await fetch(`/posts?offset=${this.currentPage * 30}`, {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' },
+                        mode: 'cors'
+                    });
                     const posts = await response.json();
                     this.posts = posts;
                     for (const post of this.posts) {
@@ -81,6 +85,7 @@
                     const response = await fetch('/posts', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
+                        mode: 'cors',
                         body: JSON.stringify({
                             title: this.newPostTitle,
                             content: this.newPostContent,
@@ -95,9 +100,10 @@
                     });
                 },
                 async createReply(postId) {
-                    await fetch(`/posts/${postId}/replies`, {
+                    await fetch(`/posts?postId=${postId}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
+                        mode: 'cors',
                         body: JSON.stringify({
                             content: this.newReplyContent[postId],
                             author: this.newReplyAuthor[postId]
@@ -107,7 +113,11 @@
                 },
                 async fetchReplies(postId, page) {
                     const offset = page * 30;
-                    const response = await fetch(`/posts/${postId}/replies?offset=${offset}`);
+                    const response = await fetch(`/replies?postId=${postId}&offset=${offset}`, {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' },
+                        mode: 'cors'
+                    });
                     const replies = await response.json();
                     const post = this.posts.find(post => post.id === postId);
                     if (post) {

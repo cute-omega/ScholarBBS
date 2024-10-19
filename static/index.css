@@ -81,7 +81,11 @@ textarea {
     border-radius: 4px;
 }
 
-label {
+textarea[id="postContent"] {
+    height: 8em;
+}
+
+textarea label {
     display: block;
     margin: 10px 0 5px;
 }
