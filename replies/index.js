@@ -13,7 +13,7 @@ export default {
         return response;
     },
     async onRequestGet(context) {
-        const { request, env } = context;
+        const { request, env } = await context.next();
         const url = new URL(request.url);
         // 获取帖子的回复
         const postId = parseInt(url.searchParams.get('postId')); // 帖子ID
@@ -28,7 +28,7 @@ export default {
         });
     },
     async onRequestPost(context) {
-        const { request, env } = context;
+        const { request, env } = await context.next();
         const url = new URL(request.url);
         // 回复帖子
         const postId = parseInt(url.searchParams.get('postId')); // 帖子ID

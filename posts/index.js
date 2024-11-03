@@ -13,7 +13,7 @@ export default {
         return response;
     },
     async onRequestGet(context) {
-        const { request, env } = context;
+        const { request, env } = await context.next();
         const url = new URL(request.url);
         // 获取分页参数
         const pageLimit = 30; // 每页显示的帖子数量，默认30
@@ -27,7 +27,7 @@ export default {
         });
     },
     async onRequestPost(context) {
-        const { request, env } = context;
+        const { request, env } = await context.next();
         const url = new URL(request.url);
         // 创建新帖子
         const { title, content, author } = await request.json();
